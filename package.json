@@ -1,0 +1,63 @@
+{
+  "name": "dsh-screenshot-hotkey",
+  "version": "0.4.3",
+  "type": "module",
+  "description": "WeChat-style screenshot and annotation for the DSH composer, with a system-wide hotkey (default Ctrl+Alt+S) that never steals focus from the window you are snipping.",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "screenshot",
+    "annotation",
+    "snip",
+    "hotkey",
+    "winforms"
+  ],
+  "license": "MIT",
+  "author": "gcolt888 (modified from @sfunction/dsh-screenshot by sfunction-guo)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gcolt888/dsh-screenshot-hotkey.git"
+  },
+  "homepage": "https://github.com/gcolt888/dsh-screenshot-hotkey#readme",
+  "bugs": {
+    "url": "https://github.com/gcolt888/dsh-screenshot-hotkey/issues"
+  },
+  "os": [
+    "win32"
+  ],
+  "engines": {
+    "dsh": ">=0.2.0-rc.2 <0.3.0-0"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "select.cs",
+    "shot.exe",
+    "hotkey.cs",
+    "hotkey.exe",
+    "locale/*.json",
+    "icon.svg",
+    "build.ps1",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  }
+}

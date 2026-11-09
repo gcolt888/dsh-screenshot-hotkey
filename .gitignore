@@ -1,0 +1,5 @@
+node_modules/
+# 编译产物：首次使用时会用 Windows 自带的 csc 从 .cs 现场重建
+*.exe
+*.exe.bak*
+*.bak-*
