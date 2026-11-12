@@ -23,6 +23,15 @@ dsh plugin --profile desktop add github:gcolt888/dsh-screenshot-hotkey
 
 或从市场安装（收录后）。装完重启 DSH。
 
+**从 0.4.3 及更早版本升级**：先**完全退出 DSH**（托盘右键退出，不是关窗口），再在外部终端更新：
+
+```sh
+dsh plugin --profile desktop add github:gcolt888/dsh-screenshot-hotkey
+```
+
+早期版本让 `hotkey.exe` 跑在插件目录里，DSH 一启动它就锁住目录，此时无论从市场还是命令行更新都会
+`ERR_PNPM_EPERM`；退出 DSH 后热键进程随之结束，更新才能替换目录。升到 0.4.4 之后就不再有这个问题。
+
 ## 要求 / Requirements
 
 - **Windows**（WPF/WinForms 原生选区窗口）。
