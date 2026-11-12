@@ -1,6 +1,6 @@
 {
   "name": "dsh-screenshot-hotkey",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "type": "module",
   "description": "WeChat-style screenshot and annotation for the DSH composer, with a system-wide hotkey (default Ctrl+Alt+S) that never steals focus from the window you are snipping.",
   "keywords": [

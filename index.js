@@ -16,6 +16,50 @@ import { promisify } from 'node:util'
 const run = promisify(execFile)
 const here = path.dirname(fileURLToPath(import.meta.url))
 
+/** Where the exes actually run from — deliberately OUTSIDE this package. */
+function binDir() {
+  const base = process.env.LOCALAPPDATA
+    ?? process.env.XDG_CACHE_HOME
+    ?? path.join(os.homedir(), '.cache')
+  return path.join(base, 'dsh-screenshot-hotkey', 'bin')
+}
+
+/**
+ * Copy an exe out of the package directory and return the outside copy.
+ *
+ * Windows locks the whole directory that holds a running exe, so while
+ * hotkey.exe runs from `node_modules\dsh-screenshot-hotkey` pnpm cannot replace
+ * that package: every market install that touches this `file:` dependency dies
+ * with `ERR_PNPM_EPERM ... rename '.../dsh-screenshot-hotkey_tmp_*'` (2026-11-12,
+ * twice for @michengai/dsh-skills-manager and twice for the dsh-pet update).
+ * Worse, pnpm deletes before it renames, so each failed attempt also strips a few
+ * files out of the copy (that is how client.js and cordis.patch.yml went missing).
+ *
+ * The copy lives in a per-build subdirectory (`bin\hotkey-<size>-<mtime>\hotkey.exe`)
+ * so the process keeps its normal name while a new build never has to overwrite a
+ * running exe. Old copies are pruned; ones still in use are simply skipped.
+ */
+function relocate(exeName) {
+  const src = path.join(here, exeName)
+  if (!fs.existsSync(src)) return null
+  const stat = fs.statSync(src)
+  const stem = path.basename(exeName, '.exe')
+  const root = binDir()
+  const dir = path.join(root, `${stem}-${stat.size}-${Math.round(stat.mtimeMs)}`)
+  fs.mkdirSync(dir, { recursive: true })
+  const dst = path.join(dir, exeName)
+  if (!fs.existsSync(dst)) fs.copyFileSync(src, dst)
+  for (const name of fs.readdirSync(root)) {
+    if (name === path.basename(dir) || !name.startsWith(`${stem}-`)) continue
+    try {
+      fs.rmSync(path.join(root, name), { recursive: true, force: true })
+    } catch {
+      // still running — the next start will clean it up
+    }
+  }
+  return dst
+}
+
 function cscPath() {
   const root = process.env.SystemRoot ?? 'C:\\Windows'
   for (const arch of ['Framework64', 'Framework']) {
@@ -26,10 +70,12 @@ function cscPath() {
 }
 
 async function ensureSelector() {
-  const exe = path.join(here, 'shot.exe')
-  if (fs.existsSync(exe)) return exe
+  const shipped = relocate('shot.exe')
+  if (shipped) return shipped
   const csc = cscPath()
   if (!csc) throw new Error('shot.exe is missing and no C# compiler was found')
+  const exe = path.join(binDir(), 'shot-rebuilt.exe')
+  fs.mkdirSync(binDir(), { recursive: true })
   await run(csc, [
     '/nologo', '/target:winexe', '/optimize',
     `/out:${exe}`,
@@ -67,15 +113,17 @@ async function selectRegion(probe = false, theme = null) {
 }
 
 /**
- * Build (once) and return the global-hotkey helper beside this file.
+ * Build (once) and return the global-hotkey helper from outside the package.
  * Mirrors ensureSelector(): the exe is rebuilt from source when missing, so an
  * antivirus quarantine cannot permanently disable the shortcut.
  */
 async function ensureHotkeyHelper() {
-  const exe = path.join(here, 'hotkey.exe')
-  if (fs.existsSync(exe)) return exe
+  const shipped = relocate('hotkey.exe')
+  if (shipped) return shipped
   const csc = cscPath()
   if (!csc) throw new Error('hotkey.exe is missing and no C# compiler was found')
+  const exe = path.join(binDir(), 'hotkey-rebuilt.exe')
+  fs.mkdirSync(binDir(), { recursive: true })
   await run(csc, [
     '-nologo', '-target:winexe', '-optimize',
     `-out:${exe}`,
@@ -161,12 +209,15 @@ function startHotkeyHelper(ctx) {
   let restartTimer = null
   fs.mkdirSync(queueDir, { recursive: true })
 
+  // The helper and the selector it launches both live outside the package.
+  const shotExe = () => relocate('shot.exe') ?? path.join(here, 'shot.exe')
+
   const spawnHelper = () => {
     if (cancelled || exePath === null) return
     const binding = currentBinding(platform)
     child = spawn(exePath, [
       String(process.pid),
-      path.join(here, 'shot.exe'),
+      shotExe(),
       queueDir,
       binding.code,
       (binding.modifiers ?? []).join(','),

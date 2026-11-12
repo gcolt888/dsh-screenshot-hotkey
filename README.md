@@ -48,6 +48,22 @@ csc -nologo -target:winexe -optimize -out:shot.exe -r:System.Windows.Forms.dll -
 
 日志：`%TEMP%\dsh-shot-hotkey.log`。
 
+## exe 运行在哪里（v0.4.4 起）
+
+**不在插件目录里**，而是启动时复制到 `%LOCALAPPDATA%\dsh-screenshot-hotkey\bin\<版本指纹>\` 再运行。
+
+原因：Windows 不允许替换「正在运行的 exe 所在目录」，而 `hotkey.exe` 是常驻的。
+如果它跑在 `node_modules\dsh-screenshot-hotkey\` 里，**你之后安装或更新任何其他插件都会失败**
+（pnpm 要整目录替换它 → `ERR_PNPM_EPERM`），更糟的是 pnpm 先删后建，每失败一次都会从插件目录里
+删掉几个文件（`client.js`、`cordis.patch.yml` 丢了就等于插件静默失效）。
+
+放到包外以后，插件目录是纯文件，pnpm 随时可以换。目录名带源文件指纹，新版会落到新目录，
+所以永远不会覆盖一个正在运行的 exe；旧目录在下次启动时清理。
+
+> The exes run from `%LOCALAPPDATA%\dsh-screenshot-hotkey\bin\` on purpose: a running exe pins its
+> package directory on Windows, which makes `pnpm add` fail with `ERR_PNPM_EPERM` for *any* plugin the
+> user installs afterwards. Keeping them outside the package keeps the package replaceable.
+
 ## 已知限制 / Known limits
 
 - 仅 Windows。
